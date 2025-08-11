@@ -14,11 +14,19 @@ export const customAdapter: Adapter = {
   async createUser(data: Omit<AdapterUser, 'id'>) {
     const id = nanoid();
     const [user] = await db.insert(users).values({
-      ...data,
       id,
+      email: data.email,
+      name: data.name ?? null,
       emailVerified: data.emailVerified ?? null,
+      image: data.image ?? null,
     }).returning();
-    return { ...user, emailVerified: user.emailVerified ?? null };
+    return { 
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      emailVerified: user.emailVerified ?? null,
+      image: user.image,
+    };
   },
   
   async getUser(id) {

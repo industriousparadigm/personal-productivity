@@ -7,6 +7,7 @@ export const users = pgTable('users', {
   name: text('name'),
   emailVerified: timestamp('email_verified'),
   image: text('image'),
+  password: text('password'), // Simple password storage - in production, this would be hashed
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

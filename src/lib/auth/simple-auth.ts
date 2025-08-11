@@ -38,15 +38,14 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Password must be at least 6 characters');
           }
 
+          const userId = nanoid();
           const [newUser] = await db
             .insert(users)
             .values({
-              id: nanoid(),
+              id: userId,
               email: credentials.email,
               name: credentials.email.split('@')[0],
-              // In production, you'd hash this password
-              // For simplicity, we're storing a marker that the password was set
-              emailVerified: new Date(), // Mark as verified since they set a password
+              password: credentials.password, // In production, hash this!
             })
             .returning();
 
@@ -57,8 +56,12 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        // User exists - in production you'd verify the password hash
-        // For now, we just check they provided the same password
+        // User exists - verify password
+        // In production, you'd use bcrypt to verify hashed password
+        if (user.password !== credentials.password) {
+          throw new Error('Invalid email or password');
+        }
+
         return {
           id: user.id,
           email: user.email,
