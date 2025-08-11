@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import bcrypt from 'bcryptjs';
 
 // Simple auth that works without external services
 export const authOptions: NextAuthOptions = {
@@ -37,6 +38,9 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Password must be at least 6 characters');
           }
 
+          // Hash the password properly
+          const hashedPassword = await bcrypt.hash(credentials.password, 10);
+
           const userId = nanoid();
           const [newUser] = await db
             .insert(users)
@@ -44,7 +48,7 @@ export const authOptions: NextAuthOptions = {
               id: userId,
               email: credentials.email,
               name: credentials.email.split('@')[0],
-              password: credentials.password, // In production, hash this!
+              password: hashedPassword, // Properly hashed password
             })
             .returning();
 
@@ -55,9 +59,13 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        // User exists - verify password
-        // In production, you'd use bcrypt to verify hashed password
-        if (user.password !== credentials.password) {
+        // User exists - verify password with bcrypt
+        if (!user.password) {
+          throw new Error('Invalid email or password');
+        }
+
+        const passwordValid = await bcrypt.compare(credentials.password, user.password);
+        if (!passwordValid) {
           throw new Error('Invalid email or password');
         }
 

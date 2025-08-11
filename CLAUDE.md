@@ -19,7 +19,8 @@ This application is built on the principle of **brutal honesty**. It doesn't sug
 - **Language**: TypeScript (strict mode)
 - **Database**: PostgreSQL via Neon
 - **ORM**: Drizzle ORM
-- **Auth**: NextAuth with magic links
+- **Auth**: NextAuth with credentials (email/password)
+- **Password Security**: Bcrypt with salt rounds of 10
 - **Styling**: Tailwind CSS 4
 - **Deployment**: Vercel
 
@@ -32,10 +33,10 @@ This application is built on the principle of **brutal honesty**. It doesn't sug
 ## Database Schema
 
 ### Core Tables
-- `users`: Authentication users
+- `users`: Authentication users (includes bcrypt hashed passwords)
 - `commitments`: The promises made
 - `trustEvents`: Track when users are chased or break promises
-- `sessions`, `accounts`, `verificationTokens`: Auth-related
+- `sessions`, `accounts`, `verificationTokens`: NextAuth tables (unused with JWT strategy)
 
 ### Commitment States
 - `pending`: Active commitment
@@ -119,10 +120,8 @@ This application is built on the principle of **brutal honesty**. It doesn't sug
 ### Environment Variables Required
 ```
 DATABASE_URL          # Neon PostgreSQL connection string
-NEXTAUTH_SECRET       # 32+ character random string
+NEXTAUTH_SECRET       # 32+ character random string  
 NEXTAUTH_URL          # Production URL
-EMAIL_SERVER          # SMTP or 'console' for dev
-EMAIL_FROM            # Sender email address
 ```
 
 ### Deploy Commands
@@ -134,7 +133,7 @@ npx vercel --prod    # Manual production deploy
 
 ## Known Issues & Limitations
 
-1. **Email Provider**: Currently using console email for dev. Production needs real SMTP.
+1. **Authentication**: Simple email/password system - no OAuth or social logins
 2. **Timezone**: 2PM check uses browser local time, not user preference
 3. **No Recurring**: Doesn't support recurring commitments by design
 4. **Single User**: No team features or sharing

@@ -49,7 +49,8 @@ Every time you tell someone "I'll do X by Y", there's no system capturing that p
 - **Styling**: Tailwind CSS 4
 - **Database**: PostgreSQL (Neon)
 - **ORM**: Drizzle ORM
-- **Authentication**: NextAuth with magic links
+- **Authentication**: NextAuth with credentials (email/password)
+- **Password Security**: Bcrypt hashing
 - **Deployment**: Vercel
 - **Date Parsing**: Chrono-node for natural language dates
 
@@ -86,10 +87,6 @@ DATABASE_URL=your_neon_postgres_url
 # NextAuth
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=generate_32_char_secret_here
-
-# Email (for magic links)
-EMAIL_SERVER=smtp://user:pass@smtp.example.com:587
-EMAIL_FROM=noreply@oathkeeper.app
 ```
 
 4. Push database schema:
@@ -112,9 +109,8 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 2. Import project in Vercel
 3. Add environment variables in Vercel dashboard:
    - `DATABASE_URL`
-   - `NEXTAUTH_SECRET`
+   - `NEXTAUTH_SECRET` 
    - `NEXTAUTH_URL` (your production URL)
-   - `EMAIL_SERVER` and `EMAIL_FROM`
 
 4. Deploy!
 
