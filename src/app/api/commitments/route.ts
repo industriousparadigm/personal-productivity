@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '@/lib/auth/simple-auth';
 import { db } from '@/lib/db';
 import { commitments, trustEvents } from '@/lib/db/schema';
 import { eq, and, desc, lte } from 'drizzle-orm';
