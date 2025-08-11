@@ -25,10 +25,12 @@ This application is built on the principle of **brutal honesty**. It doesn't sug
 - **Deployment**: Vercel
 
 ### Key Dependencies
-- `chrono-node`: Natural language date parsing
+- `chrono-node`: Natural language date parsing (fast, local)
+- `@anthropic-ai/sdk`: AI-enhanced date parsing for complex business phrases
 - `date-fns`: Date manipulation
 - `react-hot-toast`: Notifications
 - `lucide-react`: Icons
+- `bcryptjs`: Password hashing (NEVER store plain text passwords)
 
 ## Database Schema
 
@@ -91,14 +93,20 @@ This application is built on the principle of **brutal honesty**. It doesn't sug
 2. Run `npm run db:push`
 3. Update API routes in `src/app/api/commitments/route.ts`
 4. Update form in `src/components/CommitmentForm.tsx`
+5. Update TypeScript interfaces in components
 
 #### Modify Daily Check Time
 - Edit trigger time in `src/components/DailyCheck.tsx` line ~28
 - Currently hardcoded to 14:00 (2PM)
 
 #### Change Overdue Limit
-- Update limit check in `src/app/api/commitments/route.ts` line ~61
-- Update UI blocker in `src/app/page.tsx`
+- Update limit check in `src/app/api/commitments/route.ts` line ~72
+- Update UI blocker in `src/app/page.tsx` line ~72
+
+#### Adjust Work Hours End Time
+- Update AI prompt in `src/lib/utils/ai-date-parser.ts` line ~144
+- Update EOD parsing in same file line ~72
+- Currently set to 18:00 (6 PM)
 
 ## Testing Approach
 
@@ -122,6 +130,7 @@ This application is built on the principle of **brutal honesty**. It doesn't sug
 DATABASE_URL          # Neon PostgreSQL connection string
 NEXTAUTH_SECRET       # 32+ character random string  
 NEXTAUTH_URL          # Production URL
+ANTHROPIC_API_KEY     # For AI date parsing (optional but recommended)
 ```
 
 ### Deploy Commands
@@ -131,12 +140,40 @@ git push origin main  # Auto-deploys to Vercel
 npx vercel --prod    # Manual production deploy
 ```
 
+## Critical Implementation Details
+
+### AI Date Parser (`src/lib/utils/ai-date-parser.ts`)
+- **Dual parsing strategy**: Uses chrono-node first (fast), falls back to AI for complex phrases
+- **Smart detection**: Keywords like "workday", "COB", "business hours" trigger AI parsing
+- **Work hours**: EOD/COB/workday = 6 PM, calendar days = 11:59 PM
+- **Performance**: Local parsing ~20ms, AI parsing ~500-700ms
+- **Debug logging**: Comprehensive logging shows what parser was used and why
+
+### Authentication Gotchas
+- **No magic links**: Uses simple email/password with bcrypt
+- **JWT strategy**: No database adapter needed
+- **Auto-signup**: First login creates account automatically
+- **Password minimum**: 6 characters
+- **CRITICAL**: Always use bcrypt.hash() and bcrypt.compare() - NEVER plain text
+
+### Delete Functionality
+- **Experimental only**: Commitments can be deleted from history view
+- **Complete removal**: No trust events logged, as if commitment never existed
+- **Foreign key order**: Cannot log trust events after deletion (violates constraints)
+- **UI update**: Must refresh commitment list after successful deletion
+
+### Component Refresh Patterns
+- **TrustScore**: Uses `refreshTrigger` prop to update when commitments change
+- **CommitmentHistory**: Pass `onRefresh` callback to update parent state
+- **Optimistic updates**: Avoided in favor of server confirmation
+
 ## Known Issues & Limitations
 
 1. **Authentication**: Simple email/password system - no OAuth or social logins
 2. **Timezone**: 2PM check uses browser local time, not user preference
 3. **No Recurring**: Doesn't support recurring commitments by design
 4. **Single User**: No team features or sharing
+5. **AI Rate Limits**: Anthropic API has rate limits - fallback to local parsing if exceeded
 
 ## Future Considerations
 
@@ -152,10 +189,10 @@ If extending this project, maintain the core philosophy:
 - Commitment delegation tracking
 
 ### Never Add
-- Ability to delete commitments (history is permanent)
 - Soft language options
 - Excuse or reason fields
 - Automated completion
+- OAuth providers (keep auth simple and fast)
 
 ## Support & Maintenance
 

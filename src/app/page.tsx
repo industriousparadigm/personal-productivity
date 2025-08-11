@@ -28,6 +28,7 @@ export default function Home() {
   const [overdueCount, setOverdueCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (session) {
@@ -49,6 +50,9 @@ export default function Home() {
           return c.status === 'pending' && when < now;
         });
         setOverdueCount(overdue.length);
+        
+        // Trigger refresh of TrustScore component
+        setRefreshTrigger(prev => prev + 1);
       }
     } catch (error) {
       console.error('Failed to fetch commitments:', error);
@@ -132,12 +136,12 @@ export default function Home() {
         </div>
 
         {showHistory ? (
-          <CommitmentHistory commitments={commitments} />
+          <CommitmentHistory commitments={commitments} onRefresh={fetchCommitments} />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left column - Trust Score */}
             <div className="lg:col-span-1">
-              <TrustScore />
+              <TrustScore refreshTrigger={refreshTrigger} />
             </div>
 
             {/* Right column - Commitments */}

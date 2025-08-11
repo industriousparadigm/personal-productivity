@@ -18,13 +18,17 @@ interface TrustData {
   }>;
 }
 
-export function TrustScore() {
+interface TrustScoreProps {
+  refreshTrigger?: number;
+}
+
+export function TrustScore({ refreshTrigger }: TrustScoreProps) {
   const [trustData, setTrustData] = useState<TrustData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchTrustData();
-  }, []);
+  }, [refreshTrigger]);
 
   const fetchTrustData = async () => {
     try {

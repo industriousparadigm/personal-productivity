@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { commitments, trustEvents } from '@/lib/db/schema';
 import { eq, and, desc, lte } from 'drizzle-orm';
 import { z } from 'zod';
-import { parseDate } from '@/lib/utils/date';
+import { parseCommitmentDeadline } from '@/lib/utils/ai-date-parser';
 
 const createCommitmentSchema = z.object({
   who: z.string().min(1, 'Who is required'),
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createCommitmentSchema.parse(body);
 
-    // Parse the date
-    const parsedDate = parseDate(validatedData.when);
+    // Parse the date using AI-enhanced parser
+    const parsedDate = await parseCommitmentDeadline(validatedData.when);
     if (!parsedDate) {
       return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
     }
@@ -94,6 +94,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     console.error('Error creating commitment:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(request.url);
+    const commitmentId = url.searchParams.get('id');
+    if (!commitmentId) {
+      return NextResponse.json({ error: 'Commitment ID required' }, { status: 400 });
+    }
+
+    // Verify the commitment belongs to the user
+    const [commitment] = await db
+      .select()
+      .from(commitments)
+      .where(
+        and(
+          eq(commitments.id, commitmentId),
+          eq(commitments.userId, session.user.id)
+        )
+      );
+
+    if (!commitment) {
+      return NextResponse.json({ error: 'Commitment not found' }, { status: 404 });
+    }
+
+    // Delete the commitment completely - no trust events, as if it never existed
+    await db
+      .delete(commitments)
+      .where(eq(commitments.id, commitmentId));
+
+    return NextResponse.json({ success: true, message: 'Commitment deleted' });
+  } catch (error) {
+    console.error('Error deleting commitment:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -172,7 +212,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (validatedData.status === 'rescheduled' && validatedData.rescheduledTo) {
-      const newDate = parseDate(validatedData.rescheduledTo);
+      const newDate = await parseCommitmentDeadline(validatedData.rescheduledTo);
       if (!newDate) {
         return NextResponse.json({ error: 'Invalid reschedule date' }, { status: 400 });
       }

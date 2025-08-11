@@ -1,8 +1,10 @@
 'use client';
 
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, Calendar, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Calendar, Clock, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 interface Commitment {
   id: string;
@@ -17,12 +19,53 @@ interface Commitment {
 
 interface CommitmentHistoryProps {
   commitments: Commitment[];
+  onRefresh?: () => void;
 }
 
-export function CommitmentHistory({ commitments }: CommitmentHistoryProps) {
+export function CommitmentHistory({ commitments, onRefresh }: CommitmentHistoryProps) {
+  const [deleting, setDeleting] = useState<string | null>(null);
   const sortedCommitments = [...commitments].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  const handleDelete = async (commitmentId: string) => {
+    if (!confirm('Delete this experimental commitment? This cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(commitmentId);
+    try {
+      const response = await fetch(`/api/commitments?id=${commitmentId}`, {
+        method: 'DELETE',
+      });
+
+      // Parse the response to check for success
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Delete failed with status:', response.status);
+        console.error('Response data:', data);
+        throw new Error(data.error || 'Failed to delete commitment');
+      }
+
+      // Check if the response indicates success
+      if (data.success) {
+        toast.success('Commitment deleted');
+        
+        // Refresh the list
+        if (onRefresh) {
+          await onRefresh();
+        }
+      } else {
+        throw new Error(data.error || 'Unexpected response from server');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete commitment');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -116,7 +159,7 @@ export function CommitmentHistory({ commitments }: CommitmentHistoryProps) {
               <div
                 key={commitment.id}
                 className={cn(
-                  "flex items-start gap-3 p-3 rounded-lg border",
+                  "flex items-start gap-3 p-3 rounded-lg border group relative",
                   commitment.status === 'completed' && "bg-green-50 border-green-200",
                   commitment.status === 'rescheduled' && "bg-blue-50 border-blue-200",
                   commitment.status === 'pending' && new Date(commitment.when) < new Date() && "bg-red-50 border-red-200",
@@ -136,6 +179,20 @@ export function CommitmentHistory({ commitments }: CommitmentHistoryProps) {
                     {getStatusText(commitment)}
                   </div>
                 </div>
+                <button
+                  onClick={() => handleDelete(commitment.id)}
+                  disabled={deleting === commitment.id}
+                  className={cn(
+                    "absolute top-3 right-3 p-1.5 rounded-md transition-all",
+                    "opacity-0 group-hover:opacity-100",
+                    "hover:bg-red-100 hover:text-red-600",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                    deleting === commitment.id && "opacity-100"
+                  )}
+                  title="Delete experimental commitment"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
             ))
           )}

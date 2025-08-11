@@ -52,7 +52,8 @@ Every time you tell someone "I'll do X by Y", there's no system capturing that p
 - **Authentication**: NextAuth with credentials (email/password)
 - **Password Security**: Bcrypt hashing
 - **Deployment**: Vercel
-- **Date Parsing**: Chrono-node for natural language dates
+- **Date Parsing**: Chrono-node + Anthropic Claude AI for intelligent date interpretation
+- **AI Integration**: Claude Haiku for complex business hours parsing
 
 ## 📦 Installation
 
@@ -87,6 +88,9 @@ DATABASE_URL=your_neon_postgres_url
 # NextAuth
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=generate_32_char_secret_here
+
+# AI Date Parsing (optional but recommended)
+ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
 4. Push database schema:
@@ -153,8 +157,12 @@ src/
 
 ## 🔑 Key Features Explained
 
-### Smart Date Parsing
-Enter dates naturally: "today", "tomorrow 3pm", "next Friday", "in 2 hours"
+### Smart AI-Enhanced Date Parsing
+Enter dates naturally with intelligent business context understanding:
+- **Simple dates**: "today", "tomorrow 3pm", "next Friday" (parsed locally, ~20ms)
+- **Business context**: "end of thursday workday", "COB Friday" (AI-parsed to 6 PM, ~500ms)
+- **Smart defaults**: "EOD" → 6 PM, "by Friday" → 11:59 PM
+- **Work hours aware**: Distinguishes between work deadlines (6 PM) and personal deadlines (11:59 PM)
 
 ### Trust Score Calculation
 - Tracks days since someone had to chase you
@@ -171,6 +179,7 @@ Enter dates naturally: "today", "tomorrow 3pm", "next Friday", "in 2 hours"
 - Maximum 2 snoozes per commitment (1 hour each)
 - New commitments blocked when 3+ are overdue
 - Forces you to clean up broken promises first
+- Can delete experimental commitments from history (removes completely, no trust impact)
 
 ## 🤝 Contributing
 
