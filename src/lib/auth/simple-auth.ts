@@ -1,6 +1,5 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { customAdapter } from './adapter';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -8,7 +7,7 @@ import { nanoid } from 'nanoid';
 
 // Simple auth that works without external services
 export const authOptions: NextAuthOptions = {
-  adapter: customAdapter,
+  // No adapter needed for JWT strategy with credentials
   session: {
     strategy: 'jwt',
   },
