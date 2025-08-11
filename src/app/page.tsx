@@ -1,103 +1,179 @@
-import Image from "next/image";
+'use client';
+
+import { useSession, signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { CommitmentForm } from '@/components/CommitmentForm';
+import { CommitmentList } from '@/components/CommitmentList';
+import { TrustScore } from '@/components/TrustScore';
+import { DailyCheck } from '@/components/DailyCheck';
+import { CommitmentHistory } from '@/components/CommitmentHistory';
+import { LogOut, History, Home as HomeIcon } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+
+interface Commitment {
+  id: string;
+  who: string;
+  what: string;
+  when: string;
+  status: string;
+  snoozeCount: number;
+  createdAt: string;
+  completedAt?: string;
+  rescheduledAt?: string;
+}
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { data: session, status } = useSession();
+  const [commitments, setCommitments] = useState([]);
+  const [overdueCount, setOverdueCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    if (session) {
+      fetchCommitments();
+    }
+  }, [session]);
+
+  const fetchCommitments = async () => {
+    try {
+      const response = await fetch('/api/commitments');
+      if (response.ok) {
+        const data = await response.json();
+        setCommitments(data);
+        
+        // Count overdue commitments
+        const now = new Date();
+        const overdue = data.filter((c: Commitment) => {
+          const when = new Date(c.when);
+          return c.status === 'pending' && when < now;
+        });
+        setOverdueCount(overdue.length);
+      }
+    } catch (error) {
+      console.error('Failed to fetch commitments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null; // Middleware will redirect to sign-in
+  }
+
+  const isBlocked = overdueCount >= 3;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold">Oathkeeper</h1>
+              <p className="text-sm text-gray-600">Stop breaking promises</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">{session.user?.email}</span>
+              <button
+                onClick={() => signOut()}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+              >
+                <LogOut size={16} />
+                Sign out
+              </button>
+            </div>
+          </div>
         </div>
+      </header>
+
+      {/* Overdue banner */}
+      {overdueCount > 0 && (
+        <div className="bg-red-600 text-white py-3 px-4">
+          <div className="max-w-7xl mx-auto text-center font-bold">
+            ⚠️ You have {overdueCount} broken promise{overdueCount !== 1 ? 's' : ''}. 
+            {isBlocked && ' Fix them before making new commitments.'}
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* View Toggle */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setShowHistory(false)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-md transition-colors",
+              !showHistory ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            )}
+          >
+            <HomeIcon size={16} />
+            Dashboard
+          </button>
+          <button
+            onClick={() => setShowHistory(true)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-md transition-colors",
+              showHistory ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            )}
+          >
+            <History size={16} />
+            History
+          </button>
+        </div>
+
+        {showHistory ? (
+          <CommitmentHistory commitments={commitments} />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left column - Trust Score */}
+            <div className="lg:col-span-1">
+              <TrustScore />
+            </div>
+
+            {/* Right column - Commitments */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Commitment Form */}
+              <div>
+                <h2 className="text-xl font-bold mb-4">Add Commitment</h2>
+                <CommitmentForm 
+                  onCommitmentAdded={fetchCommitments}
+                  disabled={isBlocked}
+                  disabledMessage={isBlocked ? "You have 3 broken promises. Fix those first." : undefined}
+                />
+              </div>
+
+              {/* Commitment List */}
+              <div>
+                <h2 className="text-xl font-bold mb-4">Your Commitments</h2>
+                {loading ? (
+                  <div className="text-center py-8 text-gray-500">Loading commitments...</div>
+                ) : (
+                  <CommitmentList 
+                    commitments={commitments}
+                    onUpdate={fetchCommitments}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      {/* Daily Check Modal */}
+      <DailyCheck 
+        commitments={commitments}
+        onUpdate={fetchCommitments}
+      />
     </div>
   );
 }
