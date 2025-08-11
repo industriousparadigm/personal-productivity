@@ -3,7 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 
 // Simple auth that works without external services
@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
           // Hash the password properly
           const hashedPassword = await bcrypt.hash(credentials.password, 10);
 
-          const userId = nanoid();
+          const userId = randomUUID();
           const [newUser] = await db
             .insert(users)
             .values({
